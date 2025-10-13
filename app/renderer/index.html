@@ -1,0 +1,131 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; script-src 'self' 'unsafe-inline'; connect-src *">
+  <title>Space Aim</title>
+  <style>
+    :root { --bg: #1c1c1c; --panel:#222; --accent:#5e8df6; --text:#e8e8e8; --muted:#a4a4a4; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji'; }
+    .container { display:flex; height:100vh; }
+    .sidebar { width:64px; background:#111; display:flex; flex-direction:column; align-items:center; padding-top:16px; gap:16px; }
+    .content { flex:1; display:flex; flex-direction:column; }
+    .tabs { display:flex; gap:24px; padding:16px 24px; border-bottom:1px solid #2a2a2a; }
+    .tab { color:#c5d6ff; font-weight:700; cursor:pointer; }
+    .tab.active { border-bottom:3px solid var(--accent); padding-bottom:8px; }
+    .page { display:none; padding:24px; }
+    .page.active { display:block; }
+    .box { background:var(--panel); border:1px solid #2a2a2a; border-radius:6px; padding:16px; }
+    .btn { background:var(--accent); color:white; padding:12px 16px; border:none; border-radius:6px; cursor:pointer; font-weight:600; }
+    .btn.secondary { background:#3c6be6; }
+    .btn-row{ display:flex; gap:16px; margin-top:16px; }
+    .login-wrap { max-width:420px; margin: 80px auto; text-align:center; }
+    input { width:100%; padding:12px; background:#161616; border:1px solid #2a2a2a; color:var(--text); border-radius:6px; }
+    .muted { color: var(--muted); font-size:12px; }
+    pre { white-space: pre-wrap; word-break: break-word; }
+  </style>
+</head>
+<body>
+  <div id="login" class="login-wrap">
+    <h1>SPACE AIM LOGIN</h1>
+    <p class="muted">Enter License Key</p>
+    <input id="key" placeholder="XXXX-XXXX-XXXX" />
+    <div style="height:12px"></div>
+    <button class="btn" id="loginBtn">LOGIN</button>
+    <div style="margin-top:12px" class="muted" id="loginStatus"></div>
+  </div>
+
+  <div id="app" style="display:none">
+    <div class="container">
+      <div class="sidebar"></div>
+      <div class="content">
+        <div class="tabs">
+          <div data-tab="spoofer" class="tab active">Spoofer</div>
+          <div data-tab="checker" class="tab">Serial Checker</div>
+          <div data-tab="misc" class="tab">Miscellaneous</div>
+        </div>
+        <div id="spoofer" class="page active">
+          <div class="box">
+            <div class="btn-row">
+              <button class="btn" id="permSpoof">PERMANENT SPOOF</button>
+            </div>
+            <div class="btn-row">
+              <button class="btn secondary" id="monitorSpoof">MONITOR SPOOF</button>
+              <button class="btn secondary" id="macSpoof">MAC SPOOF</button>
+            </div>
+            <p class="muted">For safety, spoof actions are disabled in this build.</p>
+          </div>
+        </div>
+        <div id="checker" class="page">
+          <div class="box">
+            <h3>HWID Checker</h3>
+            <pre id="hwinfo">Loading...</pre>
+          </div>
+        </div>
+        <div id="misc" class="page">
+          <div class="box" style="margin-bottom:12px">
+            <button class="btn" disabled>CLEAN FORTNITE TRACES</button>
+            <span class="muted">Disabled: potentially destructive.</span>
+          </div>
+          <div class="box" style="margin-bottom:12px">
+            <button class="btn" disabled>FORTNITE TOURNAMENT KICK FIX</button>
+            <span class="muted">Disabled.</span>
+          </div>
+          <div class="box">
+            <button class="btn" disabled>MSI SPOOF</button>
+            <span class="muted">Disabled.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const tabs = document.querySelectorAll('.tab');
+  tabs.forEach(t => t.addEventListener('click', () => {
+    tabs.forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(t.dataset.tab).classList.add('active');
+  }));
+
+  async function loadInfo() {
+    const data = await window.sa.getHWInfo();
+    const hwid = await window.sa.getHWID();
+    const info = {
+      HWID: hwid,
+      CPU: data.cpu.brand,
+      NameProcessorID: data.cpu.processorId || '',
+      Motherboard: `${data.baseboard.manufacturer} ${data.baseboard.model}`,
+      Manufacturer: data.system.manufacturer,
+      Product: data.system.model,
+      Drives: data.disks.map(d => ({ model: d.name, serial: d.serialNum })).slice(0,5),
+      MACAddresses: data.net.map(n => n.mac).filter(Boolean)
+    };
+    document.getElementById('hwinfo').textContent = JSON.stringify(info, null, 2);
+  }
+
+  document.getElementById('loginBtn').addEventListener('click', async () => {
+    const key = document.getElementById('key').value.trim();
+    const status = document.getElementById('loginStatus');
+    status.textContent = 'Verifying...';
+    try {
+      const res = await window.sa.verifyKey(key);
+      status.textContent = 'Login successful';
+      document.getElementById('login').style.display = 'none';
+      document.getElementById('app').style.display = '';
+      await loadInfo();
+    } catch (e) {
+      const msg = e?.response?.data?.error || e.message;
+      status.textContent = 'Error: ' + msg;
+    }
+  });
+
+  // Disabled buttons explanations
+  function disabledInfo(name) { alert(name + ' is disabled in this build for safety.'); }
+  document.getElementById('permSpoof').addEventListener('click', () => disabledInfo('Permanent Spoof'));
+  document.getElementById('monitorSpoof').addEventListener('click', () => disabledInfo('Monitor Spoof'));
+  document.getElementById('macSpoof').addEventListener('click', () => disabledInfo('MAC Spoof'));
+</script>
+</body>
+</html>
